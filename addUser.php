@@ -343,7 +343,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <i class="fas fa-users me-2"></i><?= htmlspecialchars($text['user_management']) ?>
             </div>
             <ul>
-                <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
+                <li><a href="adminDashboard.php"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
                 <li><a href="addUser.php" class="active"><i class="fas fa-user-plus"></i><span><?= htmlspecialchars($text['add_user']) ?></span></a></li>
                 <li><a href="user_list.php"><i class="fas fa-list"></i><span>User List</span></a></li>
                 <li><a href="addDepartment.php"><i class="fas fa-building"></i><span>Add Department</span></a></li>

@@ -119,20 +119,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             border-radius: 16px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
+            height: 600px;
             overflow: hidden;
         }
 
         .login-header {
             background: #2563eb;
             color: white;
-            padding: 30px;
+            padding: 10px;
             text-align: center;
+            height: 100px;
         }
 
         .logo {
-            width: 60px;
-            height: 60px;
+            width: 40px;
+            height: 40px;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 12px;
             display: flex;
