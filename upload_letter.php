@@ -1,4 +1,26 @@
 <?php
+
+
+session_start();
+
+// Check if user is logged in and is an admin
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || $_SESSION['position'] !== 'chief officer') {
+    header("Location: login.php");
+    exit();
+}
+
+// Check session timeout (optional but recommended)
+$timeout_duration = 3600; // 1 hour
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $timeout_duration) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php?timeout=1");
+    exit();
+}
+$_SESSION['last_activity'] = time();$lang = isset($_GET['lang']) ? $_GET['lang'] : 'en';
+
+
+
 include("db.php");
 
 // Handle form submission
@@ -13,20 +35,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $file = $_FILES['file']['name'];
     $tmp = $_FILES['file']['tmp_name'];
 
+ // Use the actual logged-in user's ID
+    $created_by = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
+    
+    if (!$created_by) {
+        die("<div style='background:#f8d7da;padding:10px;margin:10px;border-radius:5px;'>❌ Error: User not properly logged in!</div>");
+    }
+    
+    // Check if file was uploaded
+    if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+        die("<div style='background:#f8d7da;padding:10px;margin:10px;border-radius:5px;'>❌ Error: Please upload a file!</div>");
+    }
+    
+    $file = $_FILES['file']['name'];
+    $tmp = $_FILES['file']['tmp_name'];
+
     $uploadDir = "uploads/";
     if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
     $filePath = $uploadDir . time() . "_" . basename($file);
-    move_uploaded_file($tmp, $filePath);
+    
+    if (!move_uploaded_file($tmp, $filePath)) {
+        die("<div style='background:#f8d7da;padding:10px;margin:10px;border-radius:5px;'>❌ Error: Failed to upload file!</div>");
+    }
 
-    $stmt = $conn->prepare("INSERT INTO letters 
-        (type, ref_no, subject, sender, receiver, date_received_sent, description, file_path, created_by, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
-    $stmt->execute([$type, $ref_no, $subject, $sender, $receiver, $date, $desc, $filePath, 1]); // '1' is current user (Record dept)
-
+    try {
+        $stmt = $conn->prepare("INSERT INTO letters 
+            (type, ref_no, subject, sender, receiver, date_received_sent, description, file_path, created_by, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+        $stmt->execute([$type, $ref_no, $subject, $sender, $receiver, $date, $desc, $filePath, $created_by]);
     echo "<div style='background:#d4edda;padding:10px;margin:10px;border-radius:5px;'>✅ Letter saved successfully!</div>";
+    } catch (PDOException $e) {
+        echo "<div style='background:#f8d7da;padding:10px;margin:10px;border-radius:5px;'>❌ Database Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+    }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>

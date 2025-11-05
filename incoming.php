@@ -3,6 +3,12 @@ session_start();
 $lang = isset($_GET['lang']) ? $_GET['lang'] : 'en';
 include("db.php");
 
+// Check if user is logged in and is an officer
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || $_SESSION['position'] !== 'officer') {
+    header("Location: login.php");
+    exit();
+}
+
 $text = [
     'en' => [
         'title' => '📥 Incoming Letters',
@@ -188,7 +194,7 @@ body {
 <body>
 
 <div class="wrapper">
-  <?php include("sidebar.php"); ?>
+  <?php include("officerSidbar.php"); ?>
 
   <div class="content">
     <div class="topbar">
@@ -196,31 +202,38 @@ body {
       <div class="d-flex align-items-center gap-2">
         <a href="?lang=en" class="btn btn-sm btn-outline-primary <?= $lang == 'en' ? 'active' : '' ?>">English</a>
         <a href="?lang=am" class="btn btn-sm btn-outline-primary <?= $lang == 'am' ? 'active' : '' ?>">አማርኛ</a>
-        
       </div>
     </div>
 
+    <!-- Success/Error Messages -->
+    <?php if (isset($_SESSION['message'])): ?>
+        <div class="alert alert-<?= $_SESSION['message']['type'] == 'success' ? 'success' : 'danger' ?> alert-dismissible fade show" role="alert">
+            <?= htmlspecialchars($_SESSION['message']['text']) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['message']); ?>
+    <?php endif; ?>
+
     <div class="search-container mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
-  <form method="get" class="row g-2 align-items-center flex-grow-1">
-    <input type="hidden" name="lang" value="<?= htmlspecialchars($lang) ?>">
+      <form method="get" class="row g-2 align-items-center flex-grow-1">
+        <input type="hidden" name="lang" value="<?= htmlspecialchars($lang) ?>">
 
-    <div class="col-md-8 position-relative">
-      <i class="fa fa-search search-icon"></i>
-      <input type="text" name="search" class="search-bar" placeholder="<?= htmlspecialchars($text['search']) ?>" value="<?= htmlspecialchars($search) ?>">
+        <div class="col-md-8 position-relative">
+          <i class="fa fa-search search-icon"></i>
+          <input type="text" name="search" class="search-bar" placeholder="<?= htmlspecialchars($text['search']) ?>" value="<?= htmlspecialchars($search) ?>">
+        </div>
+
+        <div class="col-md-2">
+          <button class="btn btn-primary w-100">
+            <i class="fa fa-search"></i> <?= htmlspecialchars($text['search']) ?>
+          </button>
+        </div>
+      </form>
+
+      <a href="new_letter.php?lang=<?= htmlspecialchars($lang) ?>" class="btn btn-new ms-auto">
+        <i class="fa fa-plus"></i> <?= htmlspecialchars($text['new']) ?>
+      </a>
     </div>
-
-    <div class="col-md-2">
-      <button class="btn btn-primary w-100">
-        <i class="fa fa-search"></i> <?= htmlspecialchars($text['search']) ?>
-      </button>
-    </div>
-  </form>
-
-  <a href="new_letter.php" class="btn btn-new ms-auto">
-    <i class="fa fa-plus"></i> <?= htmlspecialchars($text['new']) ?>
-  </a>
-</div>
-
 
     <div class="card p-3">
       <div class="table-responsive">
@@ -246,7 +259,7 @@ body {
                   <td><?= htmlspecialchars($row['sender'] ?? '') ?></td>
                   <td><?= htmlspecialchars($row['receiver'] ?? '') ?></td>
                   <td><?= htmlspecialchars($row['subject'] ?? '') ?></td>
-                  <td><?= htmlspecialchars($row['created_at'] ?? '') ?></td>
+                  <td><?= htmlspecialchars($row['date_received_sent'] ?? $row['created_at'] ?? '') ?></td>
                   <td>
                     <?php
                       $status = strtolower($row['status'] ?? 'pending');

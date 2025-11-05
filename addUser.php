@@ -493,6 +493,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <option value="chief officer" <?= (isset($_POST['position']) && $_POST['position'] == 'chief officer') ? 'selected' : '' ?>>
                                             Chief Officer
                                         </option>
+                                        <option value="officer" <?= (isset($_POST['position']) && $_POST['position'] == 'officer') ? 'selected' : '' ?>>
+                                            Officer
+                                        </option>
                                     </select>
                                 </div>
                             </div>

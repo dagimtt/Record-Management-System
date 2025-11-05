@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $password = $_POST['password'] ?? '';
     
     // Validate credentials for both admin and director
-    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ? AND (position = 'admin' OR position = 'director' OR position = 'chief officer')");
+    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ? AND (position = 'admin' OR position = 'director' OR position = 'chief officer' OR position = 'officer')");
     $stmt->execute([$username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -79,9 +79,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['email'] = $user['email'];
             $_SESSION['position'] = $user['position'];
             $_SESSION['logged_in'] = true;
-            $_SESSION['user_type'] = 'admin';
+            $_SESSION['user_type'] = 'chief officer';
+           $_SESSION['user_id'] = $user['id'];
             
             header("Location: dashboard.php");
+            exit();
+        }
+        else if ($user['position'] === 'officer') {
+            $_SESSION['name'] = $user['name'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['email'] = $user['email'];
+            $_SESSION['position'] = $user['position'];
+            $_SESSION['logged_in'] = true;
+            $_SESSION['user_type'] = 'admin';
+           $_SESSION['user_id'] = $user['id'];
+
+            
+            header("Location: new_letter.php");
             exit();
         }
     } else {
