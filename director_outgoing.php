@@ -175,7 +175,7 @@ body {
 <body>
 
 <div class="wrapper">
-  <?php include("officerSidbar.php"); ?>
+  <?php include("directorSidbar.php"); ?>
 
   <div class="content">
     <div class="topbar">
@@ -200,7 +200,7 @@ body {
         </div>
       </form>
 
-      <a href="new_outgoing.php" class="btn btn-new ms-auto">
+      <a href="director_new_outgoing.php" class="btn btn-new ms-auto">
         <i class="fa fa-plus"></i> <?= htmlspecialchars($text['new']) ?>
       </a>
     </div>

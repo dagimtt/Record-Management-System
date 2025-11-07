@@ -26,6 +26,7 @@ $text = [
     'en' => [
         'title' => '📨 Director Panel',
         'incoming_letters' => 'Incoming Letters',
+        'add_letter' => 'Add Letter',
         'from' => 'From',
         'to' => 'To',
         'subject' => 'Subject',
@@ -51,6 +52,7 @@ $text = [
     'am' => [
         'title' => '📨 የዳይሬክተር ፓነል',
         'incoming_letters' => 'የመጣ ደብዳቤ',
+        'add_letter' => 'ደብዳቤ ጨምር',
         'from' => 'ከ',
         'to' => 'ወደ',
         'subject' => 'ርዕስ',
@@ -280,13 +282,7 @@ body {
 
 <body>
 <div class="wrapper">
-  <div class="sidebar">
-    <div class="logo"><?= htmlspecialchars($text['title']) ?></div>
-    <ul>
-      <li><a href="director_panel.php" class="active"><i class="fa fa-inbox"></i><span><?= htmlspecialchars($text['incoming_letters']) ?></span></a></li>
-      <li><a href="logout.php"><i class="fa fa-sign-out-alt"></i><span><?= htmlspecialchars($text['logout']) ?></span></a></li>
-    </ul>
-  </div>
+    <?php include("directorSidbar.php"); ?>
 
   <div class="content">
     <div class="header">
