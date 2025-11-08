@@ -21,7 +21,7 @@ include("db.php");
 
 $text = [
     'en' => [
-        'title' => '📂 Archive Dashboard',
+        'title' => '📂 Archive',
         'search' => 'Search Letters',
         'incoming' => 'Incoming Letters',
         'outgoing' => 'Outgoing Letters',

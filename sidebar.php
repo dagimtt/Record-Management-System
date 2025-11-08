@@ -7,6 +7,7 @@ if (!isset($lang)) {
 $text_sidebar = [
     'en' => [
         'dashboard' => 'Dashboard',
+        'view_letters' => 'View Letters',
         'incoming' => 'Incoming',
         'outgoing' => 'Outgoing',
         'upload' => 'Upload',
@@ -14,6 +15,7 @@ $text_sidebar = [
     ],
     'am' => [
         'dashboard' => 'ዳሽቦርድ',
+        'view_letters' => 'ደብዳቤዎችን እይ',
         'incoming' => 'የመጣ',
         'outgoing' => 'የተላከ',
         'upload' => 'መጫን',
@@ -27,9 +29,8 @@ $text_sidebar = [
     <button class="toggle-btn" id="toggleBtn"><i class="fa fa-bars"></i></button>
   </div>
   <ul>
-    <li><a href="dashboard.php?lang=<?= $lang ?>" class="<?= basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'active' : '' ?>"><i class="fa fa-home"></i> <span><?= htmlspecialchars($text_sidebar['dashboard']) ?></span></a></li>
-    <li><a href="incoming.php?lang=<?= $lang ?>"><i class="fa fa-inbox"></i> <span><?= htmlspecialchars($text_sidebar['incoming']) ?></span></a></li>
-    <li><a href="outgoing.php?lang=<?= $lang ?>"><i class="fa fa-paper-plane"></i> <span><?= htmlspecialchars($text_sidebar['outgoing']) ?></span></a></li>
+    <li><a href="chief_officer.php?lang=<?= $lang ?>" class="<?= basename($_SERVER['PHP_SELF']) == 'chief_officer.php' ? 'active' : '' ?>"><i class="fa fa-home"></i> <span><?= htmlspecialchars($text_sidebar['dashboard']) ?></span></a></li>
+    <li><a href="dashboard.php?lang=<?= $lang ?>" class="<?= basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'active' : '' ?>"><i class="fa fa-envelope"></i> <span><?= htmlspecialchars($text_sidebar['view_letters']) ?></span></a></li>
     <li><a href="upload_letter.php?lang=<?= $lang ?>"><i class="fa fa-upload"></i> <span><?= htmlspecialchars($text_sidebar['upload']) ?></span></a></li>
     <li><a href="logout.php"><i class="fa fa-sign-out-alt"></i> <span><?= htmlspecialchars($text_sidebar['logout']) ?></span></a></li>
   </ul>
