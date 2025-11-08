@@ -15,14 +15,25 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) >
     header("Location: login.php?timeout=1");
     exit();
 }
-$_SESSION['last_activity'] = time();$lang = isset($_GET['lang']) ? $_GET['lang'] : 'en';
+$_SESSION['last_activity'] = time();
+$lang = isset($_GET['lang']) ? $_GET['lang'] : 'en';
 
 include("db.php");
+
+// Display success message if set
+if (isset($_SESSION['success_message'])) {
+    echo '<div class="alert alert-success alert-dismissible fade show" role="alert">
+            ' . $_SESSION['success_message'] . '
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>';
+    unset($_SESSION['success_message']); // Clear the message after displaying
+}
 
 $text = [
     'en' => [
         'title' => '📂 Archive',
         'search' => 'Search Letters',
+        'search_placeholder' => 'Search by Subject, Ref No, Req No, Sender, Receiver...',
         'incoming' => 'Incoming Letters',
         'outgoing' => 'Outgoing Letters',
         'all' => 'All',
@@ -34,11 +45,15 @@ $text = [
         'actions' => 'Actions',
         'view' => 'View',
         'download' => 'download',
-        'no_record' => 'No record found'
+        'no_record' => 'No record found',
+        'req_num' => 'Req Num',
+        'ref_no' => 'Ref No',
+        'status' => 'Status'
     ],
     'am' => [
         'title' => '📂 የሰነዶች መዝገብ',
         'search' => 'ፈልግ',
+        'search_placeholder' => 'በርዕሰ ጉዳይ፣ Ref No፣ Req No፣ ላኪ፣ ተቀባይ ፈልግ...',
         'incoming' => 'የመጣ ደብዳቤ',
         'outgoing' => 'የተላከ ደብዳቤ',
         'all' => 'ሁሉም',
@@ -50,20 +65,42 @@ $text = [
         'actions' => 'ተግባሮች',
         'view' => 'እይ',
         'download' => 'አዉርድ',
-        'no_record' => 'ምንም መዝገብ አልተገኘም'
+        'no_record' => 'ምንም መዝገብ አልተገኘም',
+        'req_num' => 'Req Num',
+        'ref_no' => 'Ref No',
+        'status' => 'ሁኔታ'
     ]
 ][$lang];
 
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $type = isset($_GET['type']) ? $_GET['type'] : 'all';
 
+// Build the search query
 $query = "SELECT * FROM letters WHERE 1=1";
-if ($search) $query .= " AND (subject LIKE :search OR ref_no LIKE :search OR sender LIKE :search OR receiver LIKE :search)";
-if ($type != 'all') $query .= " AND type=:type";
+$params = [];
+
+if ($search) {
+    $query .= " AND (subject LIKE :search 
+                OR ref_no LIKE :search 
+                OR request_number LIKE :search 
+                OR sender LIKE :search 
+                OR receiver LIKE :search 
+                OR description LIKE :search)";
+    $params[':search'] = "%$search%";
+}
+
+if ($type != 'all') {
+    $query .= " AND type = :type";
+    $params[':type'] = $type;
+}
+
+// Add ordering by latest first
+$query .= " ORDER BY created_at DESC";
 
 $stmt = $conn->prepare($query);
-if ($search) $stmt->bindValue(':search', "%$search%");
-if ($type != 'all') $stmt->bindValue(':type', $type);
+foreach ($params as $key => $value) {
+    $stmt->bindValue($key, $value);
+}
 $stmt->execute();
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -170,6 +207,8 @@ body {
   text-align: center;
 }
 .table-hover tbody tr:hover { background-color: rgba(18,58,174,0.05); }
+.badge { font-size: 0.75em; }
+.btn-action { padding: 4px 8px; }
 </style>
 </head>
 <body>
@@ -191,102 +230,159 @@ body {
         <input type="hidden" name="lang" value="<?= htmlspecialchars($lang) ?>">
         <div class="col-md-5 position-relative">
           <i class="fa fa-search search-icon"></i>
-          <input type="text" name="search" class="search-bar" placeholder="<?= htmlspecialchars($text['search']) ?>" value="<?= htmlspecialchars($search) ?>">
+          <input type="text" name="search" class="search-bar" 
+                 placeholder="<?= htmlspecialchars($text['search_placeholder']) ?>" 
+                 value="<?= htmlspecialchars($search) ?>">
         </div>
         <div class="col-md-3">
           <select name="type" class="form-select">
             <option value="all" <?= $type == 'all' ? 'selected' : '' ?>><?= htmlspecialchars($text['all']) ?></option>
             <option value="incoming" <?= $type == 'incoming' ? 'selected' : '' ?>><?= htmlspecialchars($text['incoming']) ?></option>
             <option value="outgoing" <?= $type == 'outgoing' ? 'selected' : '' ?>><?= htmlspecialchars($text['outgoing']) ?></option>
-
           </select>
         </div>
         <div class="col-md-2">
-          <button class="btn btn-primary w-100"><i class="fa fa-search"></i> <?= htmlspecialchars($text['search']) ?></button>
+          <button class="btn btn-primary w-100">
+            <i class="fa fa-search"></i> <?= htmlspecialchars($text['search']) ?>
+          </button>
+        </div>
+        <div class="col-md-2">
+          <a href="upload_letter.php" class="btn btn-success w-100">
+            <i class="fa fa-plus"></i> Add New
+          </a>
         </div>
       </form>
+      
+      <!-- Search results info -->
+      <?php if ($search || $type != 'all'): ?>
+        <div class="mt-3">
+          <small class="text-muted">
+            <?php 
+              $result_count = count($rows);
+              if ($search && $type != 'all') {
+                echo "Showing $result_count results for \"$search\" in " . ucfirst($type) . " letters";
+              } elseif ($search) {
+                echo "Showing $result_count results for \"$search\"";
+              } elseif ($type != 'all') {
+                echo "Showing $result_count " . ucfirst($type) . " letters";
+              }
+            ?>
+            <?php if ($search || $type != 'all'): ?>
+              <a href="?lang=<?= $lang ?>" class="text-danger ms-2">
+                <i class="fa fa-times"></i> Clear filters
+              </a>
+            <?php endif; ?>
+          </small>
+        </div>
+      <?php endif; ?>
     </div>
 
     <div class="card p-3">
       <div class="table-responsive">
         <table class="table table-striped table-hover align-middle">
           <thead>
-  <tr>
-    <th>#</th>
-    <th>Ref No</th>
-    <th><?= htmlspecialchars($text['from']) ?></th>
-    <th><?= htmlspecialchars($text['to']) ?></th>
-    <th><?= htmlspecialchars($text['subject']) ?></th>
-    <th><?= htmlspecialchars($text['date']) ?></th>
-    <th>Status</th>
-    <th><?= htmlspecialchars($text['type']) ?></th>
-    <th><?= htmlspecialchars($text['actions']) ?></th>
-  </tr>
-</thead>
+            <tr>
+              <th>#</th>
+              <th><?= htmlspecialchars($text['ref_no']) ?></th>
+              <th><?= htmlspecialchars($text['req_num']) ?></th>
+              <th><?= htmlspecialchars($text['from']) ?></th>
+              <th><?= htmlspecialchars($text['to']) ?></th>
+              <th><?= htmlspecialchars($text['subject']) ?></th>
+              <th><?= htmlspecialchars($text['date']) ?></th>
+              <th><?= htmlspecialchars($text['status']) ?></th>
+              <th><?= htmlspecialchars($text['type']) ?></th>
+              <th><?= htmlspecialchars($text['actions']) ?></th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if (count($rows) > 0): $i = 1; ?>
+              <?php foreach ($rows as $row): ?>
+                <tr>
+                  <td><?= $i++ ?></td>
+                  <td>
+                    <?php if (!empty($row['ref_no'])): ?>
+                      <span class="fw-bold"><?= htmlspecialchars($row['ref_no']) ?></span>
+                    <?php else: ?>
+                      <span class="text-muted">-</span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php if (!empty($row['request_number'])): ?>
+                      <span class="fw-bold text-primary"><?= htmlspecialchars($row['request_number']) ?></span>
+                    <?php else: ?>
+                      <span class="text-muted">-</span>
+                    <?php endif; ?>
+                  </td>
+                  <td><?= htmlspecialchars($row['sender'] ?? '') ?></td>
+                  <td><?= htmlspecialchars($row['receiver'] ?? '') ?></td>
+                  <td><?= htmlspecialchars($row['subject'] ?? '') ?></td>
+                  <td><?= htmlspecialchars($row['date_received_sent'] ?? $row['created_at'] ?? '') ?></td>
+                  <td>
+                    <?php
+                      $status = strtolower($row['status'] ?? 'pending');
+                      $badgeClass = match($status) {
+                        'new' => 'success',
+                        'read' => 'secondary',
+                        'pending' => 'warning',
+                        'archived' => 'dark',
+                        default => 'info'
+                      };
+                    ?>
+                    <span class="badge bg-<?= $badgeClass ?>">
+                      <?= ucfirst($status) ?>
+                    </span>
+                  </td>
+                  <td>
+                    <?php 
+                      $typeBadge = $row['type'] ?? '';
+                      $typeClass = $typeBadge == 'incoming' ? 'info' : 'primary';
+                    ?>
+                    <span class="badge bg-<?= $typeClass ?>">
+                      <?= ucfirst(htmlspecialchars($typeBadge)) ?>
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <a href="detail_letter.php?id=<?= urlencode($row['id']) ?>" 
+                       class="btn btn-sm btn-outline-success btn-action me-1"
+                       title="View Details">
+                        <i class="fa fa-eye"></i>
+                    </a>
 
-<tbody>
-  <?php if (count($rows) > 0): $i = 1; ?>
-    <?php foreach ($rows as $row): ?>
-      <tr>
-        <td><?= $i++ ?></td>
-        <td><?= htmlspecialchars($row['ref_no'] ?? '-') ?></td>
-        <td><?= htmlspecialchars($row['sender'] ?? '') ?></td>
-        <td><?= htmlspecialchars($row['receiver'] ?? '') ?></td>
-        <td><?= htmlspecialchars($row['subject'] ?? '') ?></td>
-        <td><?= htmlspecialchars($row['created_at'] ?? '') ?></td>
+                    <?php if (!empty($row['file_path']) && file_exists($row['file_path'])): ?>
+                      <a href="<?= htmlspecialchars($row['file_path']) ?>" 
+                         download 
+                         class="btn btn-sm btn-outline-primary btn-action me-1"
+                         title="Download File">
+                          <i class="fa fa-download"></i>
+                      </a>
+                    <?php else: ?>
+                      <button class="btn btn-sm btn-outline-secondary btn-action me-1" disabled
+                              title="No file available">
+                        <i class="fa fa-ban"></i>
+                      </button>
+                    <?php endif; ?>
 
-        <td>
-          <?php
-            $status = strtolower($row['status'] ?? 'pending');
-            $badgeClass = match($status) {
-              'new' => 'success',
-              'read' => 'secondary',
-              'pending' => 'warning',
-              'archived' => 'dark',
-              default => 'info'
-            };
-          ?>
-          <span class="badge bg-<?= $badgeClass ?>">
-            <?= ucfirst($status) ?>
-          </span>
-        </td>
-
-        <td><?= ucfirst(htmlspecialchars($row['type'] ?? '')) ?></td>
-
-       <td class="text-center">
- <a href="detail_letter.php?id=<?= urlencode($row['id']) ?>" 
-   class="btn btn-sm btn-outline-success btn-action me-1">
-    <i class="fa fa-eye"></i>
-</a>
-
-  <?php if (!empty($row['file_path']) && file_exists($row['file_path'])): ?>
-    <a href="<?= htmlspecialchars($row['file_path']) ?>" 
-       download 
-       class="btn btn-sm btn-outline-primary btn-action me-1">
-        <i class="fa fa-download"></i>
-    </a>
-  <?php else: ?>
-    <button class="btn btn-sm btn-outline-secondary btn-action me-1" disabled>
-      <i class="fa fa-ban"></i>
-    </button>
-  <?php endif; ?>
-
-  <a href="replay_letter.php?ref_no=<?= urlencode($row['ref_no']) ?>" 
-     class="btn btn-sm btn-outline-warning btn-action">
-      <i class="fa fa-reply"></i>
-  </a>
-</td>
-      </tr>
-    <?php endforeach; ?>
-  <?php else: ?>
-    <tr>
-      <td colspan="9" class="text-center text-muted">
-        <?= htmlspecialchars($text['no_record']) ?>
-      </td>
-    </tr>
-  <?php endif; ?>
-</tbody>
-
+                    <a href="replay_letter.php?ref_no=<?= urlencode($row['ref_no']) ?>" 
+                       class="btn btn-sm btn-outline-warning btn-action"
+                       title="Reply to Letter">
+                        <i class="fa fa-reply"></i>
+                    </a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <tr>
+                <td colspan="10" class="text-center text-muted py-4">
+                  <i class="fa fa-inbox fa-3x mb-3"></i><br>
+                  <?= htmlspecialchars($text['no_record']) ?>
+                  <?php if ($search || $type != 'all'): ?>
+                    <br>
+                    <small>Try adjusting your search criteria</small>
+                  <?php endif; ?>
+                </td>
+              </tr>
+            <?php endif; ?>
+          </tbody>
         </table>
       </div>
     </div>

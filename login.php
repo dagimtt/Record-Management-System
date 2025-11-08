@@ -98,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header("Location: new_letter.php");
             exit();
         }
+        
     } else {
         $error = $text['error'];
     }

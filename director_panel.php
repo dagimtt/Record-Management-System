@@ -44,6 +44,7 @@ $text = [
         'status' => 'Status',
         'new' => 'New',
         'seen' => 'Seen',
+        'sent' => 'Sent',
         'filter_by_status' => 'Filter by Status',
         'all' => 'All',
         'department' => 'Department',
@@ -70,6 +71,7 @@ $text = [
         'status' => 'ሁኔታ',
         'new' => 'አዲስ',
         'seen' => 'ተነትቷል',
+        'sent' => 'ተልኳል',
         'filter_by_status' => 'በሁኔታ አጣራ',
         'all' => 'ሁሉም',
         'department' => 'የስራ ክፍል',
@@ -88,21 +90,36 @@ if (isset($_POST['mark_as_read'])) {
     exit();
 }
 
-// Get filter status from GET parameter, default to 'new'
-$filter_status = isset($_GET['status']) ? $_GET['status'] : 'new';
+// Get filter status from GET parameter
+$filter_status = isset($_GET['status']) ? $_GET['status'] : 'all';
 
-// Build query based on filter AND director's department
+// Determine which status to show based on director's department
+if ($director_department == 'Burea') {
+    // For Burea department - show letters with status 'new'
+    $base_status = 'new';
+} else {
+    // For other departments - show letters with status 'sent'
+    $base_status = 'sent';
+}
+
+// Build query based on filter AND director's department AND base status
 if ($filter_status === 'all') {
-    $stmt = $conn->prepare("SELECT * FROM letters WHERE type = 'incoming' AND department = ? ORDER BY created_at DESC");
-    $stmt->execute([$director_department]);
+    $stmt = $conn->prepare("SELECT * FROM letters WHERE type = 'incoming' AND department = ? AND status IN (?, 'seen') ORDER BY created_at DESC");
+    $stmt->execute([$director_department, $base_status]);
 } else {
     $stmt = $conn->prepare("SELECT * FROM letters WHERE type = 'incoming' AND status = ? AND department = ? ORDER BY created_at DESC");
     $stmt->execute([$filter_status, $director_department]);
 }
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Count new (unread) letters for notification - FILTERED BY DEPARTMENT
-$stmt = $conn->prepare("SELECT COUNT(*) FROM letters WHERE type='incoming' AND status='new' AND department = ?");
+// Count notifications based on director's department
+if ($director_department == 'Burea') {
+    // For Burea - count 'new' letters
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM letters WHERE type='incoming' AND status='new' AND department = ?");
+} else {
+    // For other departments - count 'sent' letters
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM letters WHERE type='incoming' AND status='sent' AND department = ?");
+}
 $stmt->execute([$director_department]);
 $notificationCount = $stmt->fetchColumn();
 ?>
@@ -250,6 +267,10 @@ body {
   background: #28a745;
   color: white;
 }
+.status-sent {
+  background: #007bff;
+  color: white;
+}
 .modal-content {
   border-radius: 12px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
@@ -277,6 +298,15 @@ body {
   font-size: 14px;
   font-weight: 500;
 }
+.access-badge {
+  background: #ffc107;
+  color: #856404;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 10px;
+}
 </style>
 </head>
 
@@ -292,6 +322,10 @@ body {
           <span class="department-badge">
             <i class="fa fa-building me-1"></i>
             <?= htmlspecialchars($text['my_department']) ?>: <?= htmlspecialchars($director_department) ?>
+          </span>
+          <span class="access-badge">
+            <i class="fa fa-info-circle me-1"></i>
+            <?= $director_department == 'Burea' ? 'Viewing: New Letters' : 'Viewing: Sent Letters' ?>
           </span>
         </small>
       </div>
@@ -344,12 +378,23 @@ body {
         </div>
         <div class="col-md-6">
           <select class="form-select" id="statusFilter" onchange="window.location.href=this.value">
-            <option value="?lang=<?= $lang ?>&status=new" <?= $filter_status == 'new' ? 'selected' : '' ?>>
-              <?= htmlspecialchars($text['new']) ?>
-            </option>
-            <option value="?lang=<?= $lang ?>&status=seen" <?= $filter_status == 'seen' ? 'selected' : '' ?>>
-              <?= htmlspecialchars($text['seen']) ?>
-            </option>
+            <?php if ($director_department == 'Burea'): ?>
+              <!-- Burea department filter options -->
+              <option value="?lang=<?= $lang ?>&status=new" <?= $filter_status == 'new' ? 'selected' : '' ?>>
+                <?= htmlspecialchars($text['new']) ?>
+              </option>
+              <option value="?lang=<?= $lang ?>&status=seen" <?= $filter_status == 'seen' ? 'selected' : '' ?>>
+                <?= htmlspecialchars($text['seen']) ?>
+              </option>
+            <?php else: ?>
+              <!-- Other departments filter options -->
+              <option value="?lang=<?= $lang ?>&status=sent" <?= $filter_status == 'sent' ? 'selected' : '' ?>>
+                <?= htmlspecialchars($text['sent']) ?>
+              </option>
+              <option value="?lang=<?= $lang ?>&status=seen" <?= $filter_status == 'seen' ? 'selected' : '' ?>>
+                <?= htmlspecialchars($text['seen']) ?>
+              </option>
+            <?php endif; ?>
             <option value="?lang=<?= $lang ?>&status=all" <?= $filter_status == 'all' ? 'selected' : '' ?>>
               <?= htmlspecialchars($text['all']) ?>
             </option>
@@ -388,79 +433,63 @@ body {
               <td><?= htmlspecialchars($row['subject'] ?? '-') ?></td>
               <td><?= htmlspecialchars($row['created_at'] ?? '-') ?></td>
               <td>
-                <span class="status-badge <?= $row['status'] == 'new' ? 'status-new' : 'status-seen' ?>">
-                  <?= $row['status'] == 'new' ? $text['new'] : $text['seen'] ?>
+                <?php
+                  $status_class = match($row['status']) {
+                    'new' => 'status-new',
+                    'seen' => 'status-seen',
+                    'sent' => 'status-sent',
+                    default => 'status-seen'
+                  };
+                  $status_text = match($row['status']) {
+                    'new' => $text['new'],
+                    'seen' => $text['seen'],
+                    'sent' => $text['sent'],
+                    default => $text['seen']
+                  };
+                ?>
+                <span class="status-badge <?= $status_class ?>">
+                  <?= $status_text ?>
                 </span>
               </td>
               <td class="text-center">
-                <button class="btn btn-sm btn-view" data-bs-toggle="modal" data-bs-target="#viewModal<?= $row['id'] ?>">
-                  <i class="fa fa-eye"></i> <?= htmlspecialchars($text['view']) ?>
-                </button>
+                <a href="director_detail.php?id=<?= urlencode($row['id']) ?>" 
+                   class="btn btn-sm btn-outline-success btn-action me-1"
+                   title="View Details">
+                  <i class="fa fa-eye"></i>
+                </a>
+              
+                
+                <?php if ($row['status'] == 'new' || $row['status'] == 'sent'): ?>
+                  <form method="POST" style="display: inline;">
+                    <input type="hidden" name="letter_id" value="<?= $row['id'] ?>">
+                    <button type="submit" name="mark_as_read" class="btn btn-sm btn-outline-primary" title="Mark as Read">
+                      <i class="fa fa-check"></i>
+                    </button>
+                  </form>
+                <?php else: ?>
+
+                  
+                  <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Already Read">
+                    <i class="fa fa-check-double"></i>
+                  </button>
+                <?php endif; ?>
+
+
+                <a href="replay_letter.php?request_number=<?= urlencode($row['request_number']) ?>" 
+                       class="btn btn-sm btn-outline-warning btn-action"
+                       title="Reply to Letter">
+                        <i class="fa fa-reply"></i>
+                    </a>
               </td>
             </tr>
-
-            <!-- View Modal -->
-            <div class="modal fade" id="viewModal<?= $row['id'] ?>" tabindex="-1">
-              <div class="modal-dialog modal-dialog-centered modal-lg">
-                <div class="modal-content">
-                  <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="fa fa-envelope-open-text me-2"></i><?= htmlspecialchars($row['subject'] ?? 'Letter Detail') ?></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                  </div>
-                  <div class="modal-body">
-                    <div class="row mb-3">
-                      <div class="col-md-6">
-                        <p><strong>Ref No:</strong> <?= htmlspecialchars($row['ref_no'] ?? '-') ?></p>
-                        <p><strong><?= $text['from'] ?>:</strong> <?= htmlspecialchars($row['sender'] ?? '-') ?></p>
-                        <p><strong><?= $text['to'] ?>:</strong> <?= htmlspecialchars($row['receiver'] ?? '-') ?></p>
-                        <?php if (!empty($row['to_department'])): ?>
-                          <p><strong><?= $text['department'] ?>:</strong> <?= htmlspecialchars($row['to_department']) ?></p>
-                        <?php endif; ?>
-                      </div>
-                      <div class="col-md-6">
-                        <p><strong><?= $text['subject'] ?>:</strong> <?= htmlspecialchars($row['subject'] ?? '-') ?></p>
-                        <p><strong><?= $text['date'] ?>:</strong> <?= htmlspecialchars($row['created_at'] ?? '-') ?></p>
-                        <p><strong><?= $text['status'] ?>:</strong> 
-                          <span class="status-badge <?= $row['status'] == 'new' ? 'status-new' : 'status-seen' ?>">
-                            <?= $row['status'] == 'new' ? $text['new'] : $text['seen'] ?>
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-
-                    <?php if (!empty($row['file_path']) && file_exists($row['file_path'])): ?>
-                      <div class="mt-3">
-                        <h6>Attached File:</h6>
-                        <iframe src="<?= htmlspecialchars($row['file_path']) ?>" style="width:100%;height:400px;border:1px solid #ddd;border-radius:8px;"></iframe>
-                      </div>
-                    <?php else: ?>
-                      <p class="text-muted mt-3">No attached file</p>
-                    <?php endif; ?>
-                  </div>
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <?php if ($row['status'] == 'new'): ?>
-                      <form method="POST" style="display: inline;">
-                        <input type="hidden" name="letter_id" value="<?= $row['id'] ?>">
-                        <button type="submit" name="mark_as_read" class="btn btn-read">
-                          <i class="fa fa-check"></i> <?= htmlspecialchars($text['read']) ?>
-                        </button>
-                      </form>
-                    <?php else: ?>
-                      <button type="button" class="btn btn-read" disabled>
-                        <i class="fa fa-check"></i> <?= htmlspecialchars($text['seen']) ?>
-                      </button>
-                    <?php endif; ?>
-                  </div>
-                </div>
-              </div>
-            </div>
           <?php endforeach; else: ?>
             <tr>
               <td colspan="8" class="text-center text-muted py-4">
                 <i class="fa fa-inbox fa-3x mb-3 d-block"></i>
                 <?= htmlspecialchars($text['no_record']) ?><br>
-                <small class="text-muted">No letters found for <?= htmlspecialchars($director_department) ?> department</small>
+                <small class="text-muted">
+                  No <?= $director_department == 'Burea' ? 'new' : 'sent' ?> letters found for <?= htmlspecialchars($director_department) ?> department
+                </small>
               </td>
             </tr>
           <?php endif; ?>
@@ -482,12 +511,26 @@ body {
       <div class="modal-body">
         <?php if ($notificationCount > 0): ?>
           <ul class="list-group">
-            <?php foreach ($rows as $r): if ($r['status'] == 'new'): ?>
+            <?php 
+            // Get notifications based on department
+            if ($director_department == 'Burea') {
+                $notif_stmt = $conn->prepare("SELECT * FROM letters WHERE type='incoming' AND status='new' AND department = ? ORDER BY created_at DESC LIMIT 10");
+            } else {
+                $notif_stmt = $conn->prepare("SELECT * FROM letters WHERE type='incoming' AND status='sent' AND department = ? ORDER BY created_at DESC LIMIT 10");
+            }
+            $notif_stmt->execute([$director_department]);
+            $notifications = $notif_stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($notifications as $notif): 
+            ?>
               <li class="list-group-item">
-                <strong><?= htmlspecialchars($r['subject']) ?></strong><br>
-                <small><?= htmlspecialchars($r['sender']) ?> • <?= htmlspecialchars($r['created_at']) ?></small>
+                <strong><?= htmlspecialchars($notif['subject']) ?></strong><br>
+                <small>
+                  <?= htmlspecialchars($notif['sender']) ?> • 
+                  <?= htmlspecialchars($notif['created_at']) ?>
+                </small>
               </li>
-            <?php endif; endforeach; ?>
+            <?php endforeach; ?>
           </ul>
         <?php else: ?>
           <p class="text-muted text-center">No new notifications</p>

@@ -1,9 +1,7 @@
 <?php
-
-
 session_start();
 
-// Check if user is logged in and is an admin
+// Check if user is logged in and is an chief officer
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || $_SESSION['position'] !== 'chief officer') {
     header("Location: login.php");
     exit();
@@ -17,9 +15,8 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) >
     header("Location: login.php?timeout=1");
     exit();
 }
-$_SESSION['last_activity'] = time();$lang = isset($_GET['lang']) ? $_GET['lang'] : 'en';
-
-
+$_SESSION['last_activity'] = time();
+$lang = isset($_GET['lang']) ? $_GET['lang'] : 'en';
 
 include("db.php");
 
@@ -31,11 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject = $_POST['subject'];
     $date = $_POST['date_received_sent'];
     $ref_no = $_POST['ref_no'];
+    $req_num = $_POST['request_number']; // New field
     $desc = $_POST['description'];
     $file = $_FILES['file']['name'];
     $tmp = $_FILES['file']['tmp_name'];
 
- // Use the actual logged-in user's ID
+    // Use the actual logged-in user's ID
     $created_by = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
     
     if (!$created_by) {
@@ -60,10 +58,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         $stmt = $conn->prepare("INSERT INTO letters 
-            (type, ref_no, subject, sender, receiver, date_received_sent, description, file_path, created_by, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
-        $stmt->execute([$type, $ref_no, $subject, $sender, $receiver, $date, $desc, $filePath, $created_by]);
-    echo "<div style='background:#d4edda;padding:10px;margin:10px;border-radius:5px;'>✅ Letter saved successfully!</div>";
+            (type, ref_no, request_number, subject, sender, receiver, date_received_sent, description, file_path, created_by, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+        $stmt->execute([$type, $ref_no, $req_num, $subject, $sender, $receiver, $date, $desc, $filePath, $created_by]);
+        
+        // Set success message in session and redirect to dashboard
+        $_SESSION['success_message'] = "✅ Letter saved successfully!";
+        header("Location: dashboard.php");
+        exit();
+        
     } catch (PDOException $e) {
         echo "<div style='background:#f8d7da;padding:10px;margin:10px;border-radius:5px;'>❌ Database Error: " . htmlspecialchars($e->getMessage()) . "</div>";
     }
@@ -75,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <title>Record Department - Archive Upload</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-light">
 <div class="container mt-5">
@@ -82,8 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h4>📁 Record Department - Archive Upload</h4>
             <!-- Back Button -->
-            <a href="javascript:history.back()" class="btn btn-light btn-sm">
-                <i class="fa fa-arrow-left"></i> Back
+            <a href="dashboard.php" class="btn btn-light btn-sm">
+                <i class="fa fa-arrow-left"></i> Back to Dashboard
             </a>
         </div>
         <div class="card-body">
@@ -114,13 +118,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label class="form-label">Date (Received/Sent)</label>
                         <input type="date" name="date_received_sent" class="form-control" required>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label class="form-label">Reference No.</label>
                         <input type="text" name="ref_no" class="form-control" placeholder="Reference Number">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Req Num</label>
+                        <input type="text" name="request_number" class="form-control" placeholder="Request Number">
                     </div>
                 </div>
 
