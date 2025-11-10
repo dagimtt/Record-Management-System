@@ -341,33 +341,51 @@ body {
                       <?= ucfirst(htmlspecialchars($typeBadge)) ?>
                     </span>
                   </td>
-                  <td class="text-center">
-                    <a href="detail_letter.php?id=<?= urlencode($row['id']) ?>" 
-                       class="btn btn-sm btn-outline-success btn-action me-1"
-                       title="View Details">
-                        <i class="fa fa-eye"></i>
-                    </a>
+                <td class="text-center">
+    <!-- View Details Button -->
+    <?php if (strtolower($row['status'] ?? '') != 'reply'): ?>
+        <a href="detail_letter.php?id=<?= urlencode($row['id']) ?>" 
+           class="btn btn-sm btn-outline-success btn-action me-1"
+           title="View Details">
+            <i class="fa fa-eye"></i>
+        </a>
+    <?php else: ?>
+        <button class="btn btn-sm btn-outline-secondary btn-action me-1" disabled
+                title="View Not Available for Reply Letters">
+            <i class="fa fa-eye"></i>
+        </button>
+    <?php endif; ?>
 
-                    <?php if (!empty($row['file_path']) && file_exists($row['file_path'])): ?>
-                      <a href="<?= htmlspecialchars($row['file_path']) ?>" 
-                         download 
-                         class="btn btn-sm btn-outline-primary btn-action me-1"
-                         title="Download File">
-                          <i class="fa fa-download"></i>
-                      </a>
-                    <?php else: ?>
-                      <button class="btn btn-sm btn-outline-secondary btn-action me-1" disabled
-                              title="No file available">
-                        <i class="fa fa-ban"></i>
-                      </button>
-                    <?php endif; ?>
+    <!-- Download Button -->
+    <?php if (strtolower($row['status'] ?? '') != 'reply'): ?>
+        <?php if (!empty($row['file_path']) && file_exists($row['file_path'])): ?>
+            <a href="<?= htmlspecialchars($row['file_path']) ?>" 
+               download 
+               class="btn btn-sm btn-outline-primary btn-action me-1"
+               title="Download File">
+                <i class="fa fa-download"></i>
+            </a>
+        <?php else: ?>
+            <button class="btn btn-sm btn-outline-secondary btn-action me-1" disabled
+                    title="No file available">
+                <i class="fa fa-ban"></i>
+            </button>
+        <?php endif; ?>
+    <?php else: ?>
+        <button class="btn btn-sm btn-outline-secondary btn-action me-1" disabled
+                title="Download Not Available for Reply Letters">
+            <i class="fa fa-download"></i>
+        </button>
+    <?php endif; ?>
 
-                    <a href="replay_letter.php?ref_no=<?= urlencode($row['ref_no']) ?>" 
-                       class="btn btn-sm btn-outline-warning btn-action"
-                       title="Reply to Letter">
-                        <i class="fa fa-reply"></i>
-                    </a>
-                  </td>
+    <!--
+    <a href="replay_letter.php?ref_no=<?= urlencode($row['ref_no']) ?>" 
+       class="btn btn-sm btn-outline-warning btn-action"
+       title="Reply to Letter">
+        <i class="fa fa-reply"></i>
+    </a>
+    -->
+</td>
                 </tr>
               <?php endforeach; ?>
             <?php else: ?>

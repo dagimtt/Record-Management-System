@@ -34,7 +34,7 @@ $text = [
         'actions' => 'Actions',
         'view' => 'View Detail',
         'read' => 'Mark as Read',
-        'read_success' => 'Status updated to seen',
+        'read_success' => 'Status updated successfully',
         'no_record' => 'No incoming letters found',
         'logout' => 'Logout',
         'notifications' => 'Notifications',
@@ -45,6 +45,8 @@ $text = [
         'new' => 'New',
         'seen' => 'Seen',
         'sent' => 'Sent',
+        'approved' => 'Approved',
+        'reply' => 'reply',
         'filter_by_status' => 'Filter by Status',
         'all' => 'All',
         'department' => 'Department',
@@ -61,7 +63,7 @@ $text = [
         'actions' => 'ተግባሮች',
         'view' => 'ዝርዝር እይ',
         'read' => 'እንደተነበበ ምልክት አድርግ',
-        'read_success' => 'ሁኔታ ወደ ተነበበ ተቀይሯል',
+        'read_success' => 'ሁኔታ በተሳካ ሁኔታ ተቀይሯል',
         'no_record' => 'ምንም የመጣ ደብዳቤ አልተገኘም',
         'logout' => 'ውጣ',
         'notifications' => 'ማሳወቂያዎች',
@@ -72,6 +74,8 @@ $text = [
         'new' => 'አዲስ',
         'seen' => 'ተነትቷል',
         'sent' => 'ተልኳል',
+        'approved' => 'ጸድቋል',
+        'reply' => 'ምላሽ',
         'filter_by_status' => 'በሁኔታ አጣራ',
         'all' => 'ሁሉም',
         'department' => 'የስራ ክፍል',
@@ -79,13 +83,29 @@ $text = [
     ]
 ][$lang];
 
-// Handle Read button action
+// Handle Read/Approve button action
 if (isset($_POST['mark_as_read'])) {
     $letter_id = $_POST['letter_id'];
-    $stmt = $conn->prepare("UPDATE letters SET status = 'seen' WHERE id = ?");
-    if ($stmt->execute([$letter_id])) {
+    
+    // First, get the request_number of the clicked letter
+    $stmt = $conn->prepare("SELECT request_number FROM letters WHERE id = ?");
+    $stmt->execute([$letter_id]);
+    $letter = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($letter && !empty($letter['request_number'])) {
+        $request_number = $letter['request_number'];
+        
+        // Update all incoming letters with this request_number to 'seen'
+        $stmt = $conn->prepare("UPDATE letters SET status = 'seen' WHERE request_number = ? AND type = 'incoming'");
+        $stmt->execute([$request_number]);
+        
+        // Update all outgoing letters with this request_number to 'Approved'
+        $stmt = $conn->prepare("UPDATE letters SET status = 'Approved' WHERE request_number = ? AND type = 'outgoing'");
+        $stmt->execute([$request_number]);
+        
         $_SESSION['success_message'] = $text['read_success'];
     }
+    
     header("Location: " . $_SERVER['PHP_SELF'] . "?lang=" . $lang);
     exit();
 }
@@ -106,7 +126,11 @@ if ($director_department == 'Bureau') {
 if ($filter_status === 'all') {
     $stmt = $conn->prepare("SELECT * FROM letters WHERE type = 'incoming' AND department = ? AND status IN (?, 'seen') ORDER BY created_at DESC");
     $stmt->execute([$director_department, $base_status]);
-} else {
+} elseif($filter_status === 'reply'){
+  $stmt = $conn->prepare("SELECT * FROM letters WHERE type = 'Outgoing' AND status = 'reply' ORDER BY created_at DESC");
+    $stmt->execute();
+}
+else {
     $stmt = $conn->prepare("SELECT * FROM letters WHERE type = 'incoming' AND status = ? AND department = ? ORDER BY created_at DESC");
     $stmt->execute([$filter_status, $director_department]);
 }
@@ -271,6 +295,10 @@ body {
   background: #007bff;
   color: white;
 }
+.status-approved {
+  background: #6f42c1;
+  color: white;
+}
 .modal-content {
   border-radius: 12px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
@@ -325,7 +353,10 @@ body {
           </span>
           <span class="access-badge">
             <i class="fa fa-info-circle me-1"></i>
-            <?= $director_department == 'Bureau' ? 'Viewing: New Letters' : 'Viewing: Sent Letters' ?>
+            <?= 
+                $filter_status == 'reply' ? 'Viewing: All Reply Letters' : 
+                ($director_department == 'Bureau' ? 'Viewing: New Letters (Can Mark as Read/Approve)' : 'Viewing: Sent Letters (Read Only)')
+            ?>
           </span>
         </small>
       </div>
@@ -386,6 +417,9 @@ body {
               <option value="?lang=<?= $lang ?>&status=seen" <?= $filter_status == 'seen' ? 'selected' : '' ?>>
                 <?= htmlspecialchars($text['seen']) ?>
               </option>
+              <option value="?lang=<?= $lang ?>&status=reply" <?= $filter_status == 'reply' ? 'selected' : '' ?>>
+                <?= htmlspecialchars($text['reply']) ?>
+              </option>
             <?php else: ?>
               <!-- Other departments filter options -->
               <option value="?lang=<?= $lang ?>&status=sent" <?= $filter_status == 'sent' ? 'selected' : '' ?>>
@@ -410,6 +444,7 @@ body {
             <tr>
               <th>#</th>
               <th>Ref No</th>
+              <th>Request No</th>
               <th><?= htmlspecialchars($text['from']) ?></th>
               <th><?= htmlspecialchars($text['to']) ?></th>
               <th><?= htmlspecialchars($text['subject']) ?></th>
@@ -423,6 +458,7 @@ body {
             <tr>
               <td><?= $i++ ?></td>
               <td><?= htmlspecialchars($row['ref_no'] ?? '-') ?></td>
+              <td><?= htmlspecialchars($row['request_number'] ?? '-') ?></td>
               <td><?= htmlspecialchars($row['sender'] ?? '-') ?></td>
               <td>
                 <?= htmlspecialchars($row['receiver'] ?? '-') ?>
@@ -438,12 +474,16 @@ body {
                     'new' => 'status-new',
                     'seen' => 'status-seen',
                     'sent' => 'status-sent',
+                    'Approved' => 'status-approved',
+                    'reply' => 'status-sent',
                     default => 'status-seen'
                   };
                   $status_text = match($row['status']) {
                     'new' => $text['new'],
                     'seen' => $text['seen'],
                     'sent' => $text['sent'],
+                    'Approved' => $text['approved'],
+                    'reply' => $text['reply'],
                     default => $text['seen']
                   };
                 ?>
@@ -458,37 +498,41 @@ body {
                   <i class="fa fa-eye"></i>
                 </a>
               
-                
-                <?php if ($row['status'] == 'new' || $row['status'] == 'sent'): ?>
+                <!-- Mark as Read/Approve button - Only for Bureau department -->
+                <?php if ($director_department == 'Bureau' && ($row['status'] == 'new' || $row['status'] == 'sent' || $row['status'] == 'reply')): ?>
                   <form method="POST" style="display: inline;">
                     <input type="hidden" name="letter_id" value="<?= $row['id'] ?>">
-                    <button type="submit" name="mark_as_read" class="btn btn-sm btn-outline-primary" title="Mark as Read">
+                    <button type="submit" name="mark_as_read" class="btn btn-sm btn-outline-primary" 
+                            title="Mark as Read (Incoming) / Approve (Outgoing)">
                       <i class="fa fa-check"></i>
                     </button>
                   </form>
                 <?php else: ?>
-
-                  
-                  <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Already Read">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" disabled 
+                          title="<?= $director_department == 'Bureau' ? 'Already Processed' : 'Mark as Read/Approve - Bureau Only' ?>">
                     <i class="fa fa-check-double"></i>
                   </button>
                 <?php endif; ?>
 
-
+                <!-- Reply button -->
                 <a href="replay_letter.php?request_number=<?= urlencode($row['request_number']) ?>" 
-                       class="btn btn-sm btn-outline-warning btn-action"
-                       title="Reply to Letter">
-                        <i class="fa fa-reply"></i>
-                    </a>
+                   class="btn btn-sm btn-outline-warning btn-action"
+                   title="Reply to Letter">
+                  <i class="fa fa-reply"></i>
+                </a>
               </td>
             </tr>
           <?php endforeach; else: ?>
             <tr>
-              <td colspan="8" class="text-center text-muted py-4">
+              <td colspan="9" class="text-center text-muted py-4">
                 <i class="fa fa-inbox fa-3x mb-3 d-block"></i>
                 <?= htmlspecialchars($text['no_record']) ?><br>
                 <small class="text-muted">
-                  No <?= $director_department == 'Bureau' ? 'new' : 'sent' ?> letters found for <?= htmlspecialchars($director_department) ?> department
+                  <?php if ($filter_status == 'reply'): ?>
+                    No reply letters found
+                  <?php else: ?>
+                    No <?= $director_department == 'Bureau' ? 'new' : 'sent' ?> letters found for <?= htmlspecialchars($director_department) ?> department
+                  <?php endif; ?>
                 </small>
               </td>
             </tr>

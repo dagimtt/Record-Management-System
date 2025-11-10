@@ -133,6 +133,7 @@ body {
   overflow-x: hidden;
 }
 .wrapper { display: flex; min-height: 100vh; }
+
 .sidebar {
   width: 250px;
   background: #123AAE;

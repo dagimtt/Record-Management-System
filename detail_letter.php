@@ -279,7 +279,7 @@ body {
     <div class="card-header d-flex justify-content-between align-items-center">
       <h4 class="m-0"><i class="fa fa-envelope-open-text me-2"></i>Letter Details</h4>
       <div>
-        <?php if (!$edit_mode && $letter['status'] == 'pending'): ?>
+        <?php if (!$edit_mode && $letter['status'] == 'pending' || $letter['status'] == 'new'): ?>
           <a href="?id=<?= $id ?>&edit=true" class="btn btn-warning btn-sm me-2">
             <i class="fa fa-edit"></i> Edit Letter
           </a>
