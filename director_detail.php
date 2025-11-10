@@ -83,10 +83,10 @@ if (!$letter) {
 // Check if we're in edit mode
 $edit_mode = isset($_GET['edit']) && $_GET['edit'] == 'true';
 
-// Check if user can send to department (Burea director)
+// Check if user can send to department (Bureau director)
 $can_send_to_department = (!$edit_mode && 
                           $letter['status'] == 'new' && 
-                          $current_user_department == 'Burea' && 
+                          $current_user_department == 'Bureau' && 
                           $current_user_position == 'director');
 ?>
 
@@ -471,7 +471,7 @@ body {
         <p class="text-muted">Select a department to send this letter for further processing</p>
         <div class="user-info-badge d-inline-block">
           <i class="fa fa-user-shield me-1"></i>
-          Burea Director Access
+          Bureau Director Access
         </div>
       </div>
       
@@ -510,12 +510,12 @@ body {
       <i class="fa fa-info-circle me-2"></i>
       This letter has already been sent to <strong><?= htmlspecialchars($letter['department']) ?></strong> department.
     </div>
-  <?php elseif (!$edit_mode && $letter['status'] == 'new' && !($current_user_department == 'Burea' && $current_user_position == 'director')): ?>
+  <?php elseif (!$edit_mode && $letter['status'] == 'new' && !($current_user_department == 'Bureau' && $current_user_position == 'director')): ?>
     <!-- Show message if user doesn't have permission to send -->
     <div class="alert alert-warning text-center">
       <i class="fa fa-exclamation-triangle me-2"></i>
       You don't have permission to send this letter to departments. 
-      Only <strong>Burea Directors</strong> can forward letters.
+      Only <strong>Bureau Directors</strong> can forward letters.
     </div>
   <?php endif; ?>
 

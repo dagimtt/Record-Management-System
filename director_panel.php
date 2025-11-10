@@ -94,8 +94,8 @@ if (isset($_POST['mark_as_read'])) {
 $filter_status = isset($_GET['status']) ? $_GET['status'] : 'all';
 
 // Determine which status to show based on director's department
-if ($director_department == 'Burea') {
-    // For Burea department - show letters with status 'new'
+if ($director_department == 'Bureau') {
+    // For Bureau department - show letters with status 'new'
     $base_status = 'new';
 } else {
     // For other departments - show letters with status 'sent'
@@ -113,8 +113,8 @@ if ($filter_status === 'all') {
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Count notifications based on director's department
-if ($director_department == 'Burea') {
-    // For Burea - count 'new' letters
+if ($director_department == 'Bureau') {
+    // For Bureau - count 'new' letters
     $stmt = $conn->prepare("SELECT COUNT(*) FROM letters WHERE type='incoming' AND status='new' AND department = ?");
 } else {
     // For other departments - count 'sent' letters
@@ -325,7 +325,7 @@ body {
           </span>
           <span class="access-badge">
             <i class="fa fa-info-circle me-1"></i>
-            <?= $director_department == 'Burea' ? 'Viewing: New Letters' : 'Viewing: Sent Letters' ?>
+            <?= $director_department == 'Bureau' ? 'Viewing: New Letters' : 'Viewing: Sent Letters' ?>
           </span>
         </small>
       </div>
@@ -378,8 +378,8 @@ body {
         </div>
         <div class="col-md-6">
           <select class="form-select" id="statusFilter" onchange="window.location.href=this.value">
-            <?php if ($director_department == 'Burea'): ?>
-              <!-- Burea department filter options -->
+            <?php if ($director_department == 'Bureau'): ?>
+              <!-- Bureau department filter options -->
               <option value="?lang=<?= $lang ?>&status=new" <?= $filter_status == 'new' ? 'selected' : '' ?>>
                 <?= htmlspecialchars($text['new']) ?>
               </option>
@@ -488,7 +488,7 @@ body {
                 <i class="fa fa-inbox fa-3x mb-3 d-block"></i>
                 <?= htmlspecialchars($text['no_record']) ?><br>
                 <small class="text-muted">
-                  No <?= $director_department == 'Burea' ? 'new' : 'sent' ?> letters found for <?= htmlspecialchars($director_department) ?> department
+                  No <?= $director_department == 'Bureau' ? 'new' : 'sent' ?> letters found for <?= htmlspecialchars($director_department) ?> department
                 </small>
               </td>
             </tr>
@@ -513,7 +513,7 @@ body {
           <ul class="list-group">
             <?php 
             // Get notifications based on department
-            if ($director_department == 'Burea') {
+            if ($director_department == 'Bureau') {
                 $notif_stmt = $conn->prepare("SELECT * FROM letters WHERE type='incoming' AND status='new' AND department = ? ORDER BY created_at DESC LIMIT 10");
             } else {
                 $notif_stmt = $conn->prepare("SELECT * FROM letters WHERE type='incoming' AND status='sent' AND department = ? ORDER BY created_at DESC LIMIT 10");

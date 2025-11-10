@@ -45,9 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Use the actual logged-in user's ID
     $created_by = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
     
-    if (!$created_by) {
-        die("<div style='background:#f8d7da;padding:10px;margin:10px;border-radius:5px;'>❌ Error: User not properly logged in!</div>");
-    }
+   // if (!$created_by) {
+    //    die("<div style='background:#f8d7da;padding:10px;margin:10px;border-radius:5px;'>❌ Error: User not properly logged in!</div>");
+   // }
 
     $file_path = '';
     if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
