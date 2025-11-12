@@ -246,7 +246,6 @@ body {
 <body>
 
 <div class="container">
-  <!-- Success/Error Messages -->
   <?php if (isset($success_message)): ?>
     <div class="alert alert-success-custom alert-dismissible fade show" role="alert">
       <i class="fa fa-check-circle me-2"></i><?= $success_message ?>

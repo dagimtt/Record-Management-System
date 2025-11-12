@@ -32,6 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['department'])) {
         
         // Success message
         $success_message = "✅ Letter successfully sent to $department department!";
+         header("Location: director_panel.php");
+
         
         // Refresh the letter data to show updated status
         $stmt = $conn->prepare("SELECT * FROM letters WHERE id = ?");
