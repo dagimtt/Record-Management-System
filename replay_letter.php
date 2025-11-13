@@ -2,11 +2,15 @@
 session_start(); // Add session start
 include("db.php");
 
-// Check if user is logged in
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+
+// Check if user is logged in and is a director
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || $_SESSION['director_position'] !== 'director') {
     header("Location: login.php");
     exit();
 }
+
+// Get director's department from session (assuming it's stored during login)
+$director_department = $_SESSION['director_department'] ?? '';
 
 $letter = [
     'type' => '',
@@ -45,9 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Use the actual logged-in user's ID
     $created_by = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
     
-   // if (!$created_by) {
-    //    die("<div style='background:#f8d7da;padding:10px;margin:10px;border-radius:5px;'>❌ Error: User not properly logged in!</div>");
-   // }
+
+        
+        // Update all incoming letters with this request_number to 'seen'
+        $stmt = $conn->prepare("UPDATE letters SET status = 'seen' WHERE request_number = ? AND type = 'incoming'");
+        $stmt->execute([$request_number]);
+    
 
     $file_path = '';
     if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
@@ -62,9 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         $stmt = $conn->prepare("INSERT INTO letters 
-                (type, ref_no, request_number, subject, sender, receiver, date_received_sent, description, file_path, created_by, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'reply')");
-        $stmt->execute([$type, $ref_no, $request_number, $subject, $sender, $receiver, $date, $desc, $file_path, $created_by]);
+                (type, ref_no, request_number, subject, sender, receiver, date_received_sent, description, department, file_path, created_by, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, 'reply')");
+        $stmt->execute([$type, $ref_no, $request_number, $subject, $sender, $receiver, $date, $desc,$director_department, $file_path, $created_by]);
 
         // Set success message and redirect to dashboard
         $_SESSION['success_message'] = "✅ Reply letter created successfully!";

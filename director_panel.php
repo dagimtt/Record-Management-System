@@ -136,15 +136,16 @@ else {
 }
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Count notifications based on director's department
+// Count notifications based on director's department - UPDATED FOR BUREAU
 if ($director_department == 'Bureau') {
-    // For Bureau - count 'new' letters
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM letters WHERE type='incoming' AND status='new' AND department = ?");
+    // For Bureau - count 'new' letters AND 'reply' letters
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM letters WHERE (type='incoming' AND status='new' AND department = ?) OR (type='Outgoing' AND status='reply')");
+    $stmt->execute([$director_department]);
 } else {
     // For other departments - count 'sent' letters
     $stmt = $conn->prepare("SELECT COUNT(*) FROM letters WHERE type='incoming' AND status='sent' AND department = ?");
+    $stmt->execute([$director_department]);
 }
-$stmt->execute([$director_department]);
 $notificationCount = $stmt->fetchColumn();
 ?>
 <!DOCTYPE html>
@@ -556,13 +557,14 @@ body {
         <?php if ($notificationCount > 0): ?>
           <ul class="list-group">
             <?php 
-            // Get notifications based on department
+            // Get notifications based on department - UPDATED FOR BUREAU
             if ($director_department == 'Bureau') {
-                $notif_stmt = $conn->prepare("SELECT * FROM letters WHERE type='incoming' AND status='new' AND department = ? ORDER BY created_at DESC LIMIT 10");
+                $notif_stmt = $conn->prepare("SELECT * FROM letters WHERE ((type='incoming' AND status='new' AND department = ?) OR (type='Outgoing' AND status='reply')) ORDER BY created_at DESC LIMIT 10");
+                $notif_stmt->execute([$director_department]);
             } else {
                 $notif_stmt = $conn->prepare("SELECT * FROM letters WHERE type='incoming' AND status='sent' AND department = ? ORDER BY created_at DESC LIMIT 10");
+                $notif_stmt->execute([$director_department]);
             }
-            $notif_stmt->execute([$director_department]);
             $notifications = $notif_stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($notifications as $notif): 
@@ -572,6 +574,9 @@ body {
                 <small>
                   <?= htmlspecialchars($notif['sender']) ?> • 
                   <?= htmlspecialchars($notif['created_at']) ?>
+                  <?php if ($notif['type'] == 'Outgoing' && $notif['status'] == 'reply'): ?>
+                    <span class="badge bg-warning text-dark ms-2"><?= $text['reply'] ?></span>
+                  <?php endif; ?>
                 </small>
               </li>
             <?php endforeach; ?>

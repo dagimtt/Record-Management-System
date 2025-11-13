@@ -2,6 +2,17 @@
 session_start();
 $lang = isset($_GET['lang']) ? $_GET['lang'] : 'en';
 include("db.php");
+// Check if user is logged in and is a director
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || $_SESSION['director_position'] !== 'director') {
+    header("Location: login.php");
+    exit();
+}
+
+// Get director's department from session (assuming it's stored during login)
+$director_department = $_SESSION['director_department'] ?? '';
+
+
+
 
 $text = [
     'en' => [
@@ -37,13 +48,32 @@ $text = [
 // Search only outgoing letters
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-$query = "SELECT * FROM letters WHERE type='outgoing'";
+// Build query based on department
+if ($director_department == 'Bureau') {
+    // Bureau can see all outgoing letters
+    $query = "SELECT * FROM letters WHERE type='outgoing'";
+    $department_filter = 'all';
+} else {
+    // Other departments can only see their own outgoing letters
+    $query = "SELECT * FROM letters WHERE type='outgoing' AND department = :department";
+    $department_filter = $director_department;
+}
+
+// Add search condition if provided
 if ($search) {
     $query .= " AND (subject LIKE :search OR ref_no LIKE :search OR sender LIKE :search OR receiver LIKE :search)";
 }
 
 $stmt = $conn->prepare($query);
-if ($search) $stmt->bindValue(':search', "%$search%");
+
+// Bind parameters
+if ($director_department != 'Bureau') {
+    $stmt->bindValue(':department', $director_department);
+}
+if ($search) {
+    $stmt->bindValue(':search', "%$search%");
+}
+
 $stmt->execute();
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
